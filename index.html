@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BERT FakeGuard — Real-Time Fake News Detection</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <canvas id="neuralCanvas"></canvas>
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">
+        <svg width="38" height="38" viewBox="0 0 38 38" fill="none">
+          <circle cx="19" cy="19" r="18" stroke="#00f5d4" stroke-width="1.2" stroke-dasharray="4 2"/>
+          <circle cx="19" cy="9"  r="2.8" fill="#00f5d4"/>
+          <circle cx="29" cy="19" r="2.8" fill="#00f5d4"/>
+          <circle cx="19" cy="29" r="2.8" fill="#00f5d4"/>
+          <circle cx="9"  cy="19" r="2.8" fill="#00f5d4"/>
+          <circle cx="19" cy="19" r="4"   fill="#00f5d4" opacity="0.95"/>
+          <line x1="19" y1="11.8" x2="19" y2="15.2" stroke="#00f5d4" stroke-width="1.2"/>
+          <line x1="26.2" y1="19" x2="22.8" y2="19" stroke="#00f5d4" stroke-width="1.2"/>
+          <line x1="19" y1="26.2" x2="19" y2="22.8" stroke="#00f5d4" stroke-width="1.2"/>
+          <line x1="11.8" y1="19" x2="15.2" y2="19" stroke="#00f5d4" stroke-width="1.2"/>
+        </svg>
+      </div>
+      <div>
+        <h1>BERT<span class="logo-accent">FakeGuard</span></h1>
+        <p class="tagline">Real-Time Fake News Detection · Deep Learning NLP</p>
+      </div>
+    </div>
+    <div class="header-stats">
+      <div class="stat"><span class="stat-val" id="totalCount">0</span><span class="stat-lbl">Analyzed</span></div>
+      <div class="stat-divider"></div>
+      <div class="stat"><span class="stat-val" id="fakeCount">0</span><span class="stat-lbl">Flagged</span></div>
+      <div class="stat-divider"></div>
+      <div class="model-badge"><span class="dot"></span>BERT-base · Deep Learning</div>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- Architecture banner -->
+    <div class="arch-banner">
+      <div class="arch-step"><span>📥</span><span>Input</span></div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-step"><span>🔤</span><span>Tokenize</span></div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-step active"><span>🧠</span><span>BERT Encoder</span></div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-step"><span>⚡</span><span>Classify</span></div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-step"><span>📊</span><span>Verdict</span></div>
+    </div>
+
+    <!-- Input -->
+    <section class="panel input-panel">
+      <div class="panel-label"><span class="label-dot"></span>INPUT LAYER — NEWS TEXT</div>
+      <textarea id="newsInput" placeholder="Paste a news headline, article excerpt, or social media claim for BERT-powered analysis…" spellcheck="false" maxlength="2000"></textarea>
+      <div class="input-footer">
+        <div class="token-info">
+          <span id="charCount">0</span><span class="muted"> / 2000 chars · </span>
+          <span id="tokenCount">~0</span><span class="muted"> tokens</span>
+        </div>
+        <button id="analyzeBtn" onclick="analyzeNews()">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" style="margin-right:7px;flex-shrink:0">
+            <path d="M2 8h12M8 2l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Run Detection
+        </button>
+      </div>
+      <div class="shortcut-hint">Ctrl + Enter to run</div>
+    </section>
+
+    <!-- Loading pipeline -->
+    <section id="loadingSection" class="panel loading-panel hidden">
+      <div class="pipeline-label" id="loadingMsg">Initializing BERT encoder…</div>
+      <div class="pipeline-track">
+        <div class="pip-step" id="pip1"><div class="pip-icon">🔤</div><div class="pip-name">Tokenize</div></div>
+        <div class="pip-line" id="pline1"></div>
+        <div class="pip-step" id="pip2"><div class="pip-icon">📐</div><div class="pip-name">Embed</div></div>
+        <div class="pip-line" id="pline2"></div>
+        <div class="pip-step" id="pip3"><div class="pip-icon">🧠</div><div class="pip-name">Encode</div></div>
+        <div class="pip-line" id="pline3"></div>
+        <div class="pip-step" id="pip4"><div class="pip-icon">🔍</div><div class="pip-name">Attend</div></div>
+        <div class="pip-line" id="pline4"></div>
+        <div class="pip-step" id="pip5"><div class="pip-icon">📊</div><div class="pip-name">Classify</div></div>
+      </div>
+    </section>
+
+    <!-- Result -->
+    <section id="resultPanel" class="panel result-panel hidden">
+
+      <div class="result-top">
+        <div id="verdictBlock" class="verdict-block">
+          <div id="verdictIcon" class="verdict-icon"></div>
+          <div>
+            <div id="verdictLabel" class="verdict-label"></div>
+            <div id="verdictSub" class="verdict-sub"></div>
+          </div>
+        </div>
+        <div class="score-ring-wrap">
+          <svg class="score-ring" viewBox="0 0 84 84">
+            <circle cx="42" cy="42" r="36" fill="none" stroke="#1a1f2e" stroke-width="7"/>
+            <circle id="scoreArc" cx="42" cy="42" r="36" fill="none" stroke-width="7"
+                    stroke-linecap="round" stroke-dasharray="226.2" stroke-dashoffset="226.2"
+                    transform="rotate(-90 42 42)"/>
+          </svg>
+          <div class="score-ring-inner">
+            <span id="scoreNum" class="score-num">0</span>
+            <span class="score-pct">%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-label">ATTENTION SIGNALS</div>
+      <div id="flagsRow" class="flags-row"></div>
+
+      <div class="section-label">MODEL OUTPUT — ANALYSIS</div>
+      <div id="analysisText" class="analysis-text"></div>
+
+      <div class="section-label">FEATURE ATTRIBUTION SCORES</div>
+      <div id="featuresGrid" class="features-grid"></div>
+
+      <div class="section-label">HIGHLIGHTED TOKENS</div>
+      <div id="tokenHighlight" class="token-highlight"></div>
+
+    </section>
+
+    <!-- History -->
+    <section class="panel history-panel">
+      <div class="panel-header">
+        <div class="panel-label"><span class="label-dot"></span>INFERENCE LOG</div>
+        <button class="clear-btn" onclick="clearHistory()">Clear</button>
+      </div>
+      <div id="historyList" class="history-list">
+        <p class="empty-state">No inferences yet — submit text above to begin.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <span>BERT FakeGuard · Deep Learning NLP Project</span>
+      <span class="sep">·</span>
+      <span>BERT-base-uncased · 110M params · 12 attention heads</span>
+
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
